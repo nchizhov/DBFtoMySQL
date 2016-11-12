@@ -67,6 +67,7 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 * **charset_name** - Normal charset name of DBF-file records
 * **memo** - If *True* - DBF-file have MEMO-fields
 * **memo_file** - MEMO-file path if DBF-file have MEMO-fields
+
 #### Column header array:
 * **name** - column name in lowercase
 * **type** - column type (one char)
@@ -74,6 +75,7 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 * **decimal** - if not *0* - decimal part of number
 * **mdx_flag** - MDX-flag on column
 * **auto_increment** - next auto increment value (only for *dBASE 7*)
+
 #### MEMO-file header array:
 * **freeblock_position** - position of next free block of MEMO-file
 * **block_size** - MEMO-file block size
