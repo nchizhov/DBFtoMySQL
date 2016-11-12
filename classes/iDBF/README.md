@@ -20,7 +20,7 @@ $table = new \iDBF\Table(/path/to/dbf/file);
    * ```$table->error_info``` - returns error description or **null** - if no errors
    * ```$table->close()``` - close DBF-file (also closing on destruct class)
       
-### Records
+#### Records
 May read records of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7, FoxPro, FoxBASE+, Visual FoxPro file records. Now implements column types:
 * **C** - Character
 * **D** - Date (if empty converts to null)
@@ -44,7 +44,7 @@ $records = new \iDBF\Records($data, $headers, $columns, $encode);
 ##### Methods:
    * ```$record->nextRecord``` - reads next record from DBF-file (return record-array or false - if records finished)
    
-### Memo
+#### Memo
 May read MEMO-files formats (headers and records): DBT, FPT, SMT
 
 ##### Using:
@@ -58,7 +58,8 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
    * ```$memo->close()``` - close MEMO-file (also closing on destruct class)
    
 ### Notes
-#### Table header array:
+
+##### Table header array:
 * **dbf_file** - path to DBF-file
 * **table** - DBF-table name in lowercase
 * **version** - DBF-file version
@@ -74,7 +75,7 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 * **memo** - If *True* - DBF-file have MEMO-fields
 * **memo_file** - MEMO-file path if DBF-file have MEMO-fields
 
-#### Column header array:
+##### Column header array:
 * **name** - column name in lowercase
 * **type** - column type (one char)
 * **length** - column length
@@ -82,7 +83,7 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 * **mdx_flag** - MDX-flag on column
 * **auto_increment** - next auto increment value (only for *dBASE 7*)
 
-#### MEMO-file header array:
+##### MEMO-file header array:
 * **freeblock_position** - position of next free block of MEMO-file
 * **block_size** - MEMO-file block size
 
