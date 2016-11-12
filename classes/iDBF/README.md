@@ -10,6 +10,7 @@ May read headers of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7 (*partial*),
 ```
 $table = new \iDBF\Table(/path/to/dbf/file);
 ```
+
 2. Methods:
    * ```$table->getHeaders()``` - return array of DBF-file headers
    * ```$table->getColumns()``` - return array of DBF-file columns
@@ -29,6 +30,7 @@ May read records of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7, FoxPro, Fox
 * **N** - Numeric
 * **P** - Picture
 * **T** - DateTime  (if empty converts to null) (*partial implemented*)
+
 1. Using: 
 ```
 $records = new \iDBF\Records($data, $headers, $columns, $encode);
@@ -37,6 +39,7 @@ $records = new \iDBF\Records($data, $headers, $columns, $encode);
 * **$headers** - DBF-file headers array
 * **$columns** - DBF-file columns array
 * **$encode** - iconv **Memo, Character** fields to selected character (default: **utf8**)
+
 2. Methods:
    * ```$record->nextRecord``` - reads next record from DBF-file (return record-array or false - if records finished)
    
