@@ -6,12 +6,13 @@ This group of classes (**Table**, **Records**, **Memo** in namespace **iDBF**) n
 ### Classes descriptions
 #### Table
 May read headers of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7 (*partial*), FoxPro, FoxBASE+, Visual FoxPro file structure.
-1. Using: 
+
+##### Using: 
 ```
 $table = new \iDBF\Table(/path/to/dbf/file);
 ```
 
-2. Methods:
+##### Methods:
    * ```$table->getHeaders()``` - return array of DBF-file headers
    * ```$table->getColumns()``` - return array of DBF-file columns
    * ```$table->getData()``` - return resource to DBF-file body (required for **\iDBF\Records**)
@@ -31,7 +32,7 @@ May read records of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7, FoxPro, Fox
 * **P** - Picture
 * **T** - DateTime  (if empty converts to null) (*partial implemented*)
 
-1. Using: 
+##### Using: 
 ```
 $records = new \iDBF\Records($data, $headers, $columns, $encode);
 ```
@@ -40,16 +41,18 @@ $records = new \iDBF\Records($data, $headers, $columns, $encode);
 * **$columns** - DBF-file columns array
 * **$encode** - iconv **Memo, Character** fields to selected character (default: **utf8**)
 
-2. Methods:
+##### Methods:
    * ```$record->nextRecord``` - reads next record from DBF-file (return record-array or false - if records finished)
    
 ### Memo
 May read MEMO-files formats (headers and records): DBT, FPT, SMT
-1. Using:
+
+##### Using:
 ```
 $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 ```
-2. Methods:
+
+##### Methods:
    * ```$memo->getHeaders()``` - returns array of MEMO-file headers
    * ```$memo->readMemo($record)``` - return array of MEMO ```$record``` position
    * ```$memo->close()``` - close MEMO-file (also closing on destruct class)
