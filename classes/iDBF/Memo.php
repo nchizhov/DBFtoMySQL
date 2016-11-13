@@ -66,11 +66,11 @@ class Memo {
 
   private function readMemo($block) {
     fseek($this->fp, $this->headers["block_size"] * $block);
-    $data = fread($this->fp, $this->headers["block_size"]);
+    $data = fread($this->fp, 8);
     $this->memo = [
       "signature" => $this->signature[unpack("N", substr($data, 0, 4))[1]],
       "length" => unpack("N", substr($data, 4, 4))[1]
     ];
-    $this->memo["text"] = substr($data, 8, $this->memo["length"]);
+    $this->memo["text"] = fread($this->fp, $this->memo["length"]);
   }
 }
