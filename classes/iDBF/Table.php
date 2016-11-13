@@ -111,9 +111,9 @@ class Table {
       "header_length" => unpack("S", substr($data, 8, 2))[1],
       "record_length" => unpack("S", substr($data, 10, 2))[1],
       "unfinish_transaction" => unpack("C", $data[14])[1],
-      "coded" => unpack("C", substr($data, 15, 1))[1],
+      "coded" => unpack("C", $data[15])[1],
       "mdx_flag" => unpack("C", $data[28])[1],
-      "charset" => unpack("C", substr($data, 29, 1))[1],
+      "charset" => unpack("C", $data[29])[1],
       "checks" => [
         unpack("S", substr($data, 12, 2))[1], unpack("S", substr($data, 30, 2))[1]
       ]
