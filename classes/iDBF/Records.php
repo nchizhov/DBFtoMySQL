@@ -72,6 +72,6 @@ class Records {
   }
 
   private function convertChar($data) {
-    return iconv(str_replace('\r\n', '\n', $this->headers["charset_name"]), $this->encode, $data);
+    return iconv(str_replace("\r\n", "\n", $this->headers["charset_name"]), $this->encode, $data);
   }
 }
