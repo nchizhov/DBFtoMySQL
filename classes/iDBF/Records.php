@@ -40,7 +40,7 @@ class Records {
       switch($column["type"]) {
         case "F":
         case "N":
-          $record[$column["name"]] = ($column["decimal"]) ? (float) $sub_data : (int) $sub_data;
+          $record[$column["name"]] = (is_numeric($sub_data)) ? (($column["decimal"]) ? (float) $sub_data : (int) $sub_data) : 0;
           break;
         case "T":
         case "D":

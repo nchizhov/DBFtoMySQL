@@ -25,9 +25,7 @@ class Memo {
   }
 
   public function __destruct() {
-    if (get_resource_type($this->fp) === "file") {
-      fclose($this->fp);
-    }
+    $this->close();
   }
 
   private function open() {
@@ -53,7 +51,9 @@ class Memo {
   }
 
   public function close() {
-    fclose($this->fp);
+    if (get_resource_type($this->fp) === "file") {
+      fclose($this->fp);
+    }
   }
 
   private function readHeaders() {
