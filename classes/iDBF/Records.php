@@ -68,13 +68,10 @@ class Records {
 
   private function getMemo($data, $convert = true) {
     $memo = $this->memo->getMemo($data);
-    if (isset($memo["text"])) {
-      return ($convert) ? $this->convertChar($memo["text"]) : $memo["text"];
-    }
-    return "";
+    return ($convert) ? $this->convertChar($memo["text"]) : $memo["text"];
   }
 
   private function convertChar($data) {
-    return iconv($this->headers["charset_name"], $this->encode, $data);
+    return iconv(str_replace('\r\n', '\n', $this->headers["charset_name"]), $this->encode, $data);
   }
 }

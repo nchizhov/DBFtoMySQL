@@ -10,7 +10,6 @@ namespace iDBF;
 
 class Memo {
   private $headers = null;
-  private $memo;
 
   private $db, $fp;
   private $signature = [
@@ -46,8 +45,7 @@ class Memo {
     if (is_null($this->headers)) {
       $this->readHeaders();
     }
-    $this->readMemo($block);
-    return $this->memo;
+    return $this->readMemo($block);
   }
 
   public function close() {
@@ -67,10 +65,11 @@ class Memo {
   private function readMemo($block) {
     fseek($this->fp, $this->headers["block_size"] * $block);
     $data = fread($this->fp, 8);
-    $this->memo = [
+    $memo = [
       "signature" => $this->signature[unpack("N", substr($data, 0, 4))[1]],
       "length" => unpack("N", substr($data, 4, 4))[1]
     ];
-    $this->memo["text"] = fread($this->fp, $this->memo["length"]);
+    $memo["text"] = fread($this->fp, $memo["length"]);
+    return $memo;
   }
 }
