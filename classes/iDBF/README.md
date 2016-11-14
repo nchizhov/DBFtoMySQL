@@ -34,12 +34,12 @@ May read records of: FoxBASE, dBASE III, dBASE IV, dBASE 5, dBASE 7, FoxPro, Fox
 
 ##### Using: 
 ```
-$records = new \iDBF\Records($data, $headers, $columns, $encode);
+$records = new \iDBF\Records($data, $encode, $headers, $columns);
 ```
-* **$data** - DBF-file resource from \iBF\Table getData()
-* **$headers** - DBF-file headers array
-* **$columns** - DBF-file columns array
+* **$data** - Instance of Table class or DBF-file resource from \iDBF\Table getData()
 * **$encode** - iconv **Memo, Character** fields to selected character (default: **utf8**)
+* **$headers** - DBF-file headers array or null if $data is instance of Table class (default: null)
+* **$columns** - DBF-file columns array or null if $data is instance of Table class (default: null)
 
 ##### Methods:
    * ```$record->nextRecord``` - reads next record from DBF-file (return record-array or false - if records finished)
@@ -86,6 +86,11 @@ $memo = new \iDBF\Memo(/path/to/dbf/memo/file);
 ##### MEMO-file header array:
 * **freeblock_position** - position of next free block of MEMO-file
 * **block_size** - MEMO-file block size
+
+##### MEMO-record header array:
+* **signature** - type of MEMO-record: text or template
+* **length** - size of MEMO-record
+* **text** - text of MEMO-record
 
 ### License
 MIT 

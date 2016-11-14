@@ -83,6 +83,7 @@ class Table {
   }
 
   public function getColumns() {
+    $this->getHeaders();
     if (!$this->error && is_null($this->columns)) {
       $this->readTableHeaders();
     }
@@ -90,6 +91,8 @@ class Table {
   }
 
   public function getData() {
+    $this->getHeaders();
+    $this->getColumns();
     return $this->fp;
   }
 

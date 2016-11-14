@@ -149,7 +149,7 @@ class dbf2mysql {
       }
       $this->createMySQLColumns();
       if (!$this->config["columns_only"]) {
-        $this->dbfRecords = new Records($table->getData(), $this->dbfHeaders, $this->dbfColumns, $this->config["db_charset"]);
+        $this->dbfRecords = new Records($table, $this->config["db_charset"]);
         $this->writeRecords();
       }
       $this->setKeyField();

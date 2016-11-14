@@ -14,10 +14,20 @@ class Records {
 
   private $logicals = ['t', 'y', 'д'];
 
-  public function __construct($data, $headers, $columns, $encode = "utf8") {
-    $this->fp = $data;
-    $this->headers = $headers;
-    $this->columns = $columns;
+  public function __construct($data, $encode = "utf8", $headers = null, $columns = null) {
+    if ($data instanceof Table) {
+      $this->headers = $data->getHeaders();
+      $this->columns = $data->getColumns();
+      $this->fp = $data->getData();
+    }
+    else {
+      if (is_null($headers) || is_null($columns)) {
+        throw new \Exception('Not correct data in Record class');
+      }
+      $this->fp = $data;
+      $this->headers = $headers;
+      $this->columns = $columns;
+    }
     $this->encode = $encode;
     if ($this->headers["memo"] && !is_null($this->headers["memo_file"])) {
       $this->memo = new Memo($this->headers["memo_file"]);
