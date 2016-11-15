@@ -281,6 +281,7 @@ class dbf2mysql {
   private function drawStatus($position, $perPosition) {
     $percent = (int) round($position / $perPosition);
     if ($this->percent <> !$percent) {
+      $this->percent = $percent;
       $part1 = (($percent < 25) ?
           $this->colors["white"].str_repeat("H", $percent).$this->colors["default"].$this->colors["red"].str_repeat(".", 25 - $percent) :
           $this->colors["white"].str_repeat("H", 25)).$this->colors["default"];
@@ -295,7 +296,6 @@ class dbf2mysql {
       echo($this->colors["red"]."[".$this->colors["default"].$part1.
         $this->colors["red"]."50%".$this->colors["default"].
         $part2.$this->colors["red"]."]".$this->colors["default"]."\r");
-      $this->percent = $percent;
     }
   }
 
