@@ -38,6 +38,8 @@ class dbf2mysql {
   private $percent = -1;
 
   public function __construct($config) {
+    ini_set("memory_limit", "2048M");
+
     $this->config = $config;
 
     $this->checkConfig();
