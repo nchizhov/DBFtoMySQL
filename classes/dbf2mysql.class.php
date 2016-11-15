@@ -35,6 +35,7 @@ class dbf2mysql {
     "yellow" => "\e[93m",
     "white" => "\e[97m"
   ];
+  private $percent = -1;
 
   public function __construct($config) {
     $this->config = $config;
@@ -256,7 +257,8 @@ class dbf2mysql {
         }
       }
       $this->db->commit();
-      $this->writeLog("\nTable <yellow>".$this->dbfHeaders["table"]."<default> successfully imported in <red>".
+      echo("\n");
+      $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully imported in <red>".
                       round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
     }
   }
@@ -278,21 +280,23 @@ class dbf2mysql {
 
   private function drawStatus($position, $perPosition) {
     $percent = (int) round($position / $perPosition);
-    $part1 = (($percent < 25) ?
-      $this->colors["white"].str_repeat("H", $percent).$this->colors["default"].$this->colors["red"].str_repeat(".", 25 - $percent) :
-      $this->colors["white"].str_repeat("H", 25)).$this->colors["default"];
-    if ($percent > 25) {
-      $percent = $percent - 25;
-      $part2 = (($percent < 50) ?
-        $this->colors["white"].str_repeat("H", $percent).$this->colors["default"].$this->colors["red"].str_repeat(".", 25 - $percent) :
-        $this->colors["white"].str_repeat("H", 25)).$this->colors["default"];
+    if ($this->percent <> !$percent) {
+      $part1 = (($percent < 25) ?
+          $this->colors["white"].str_repeat("H", $percent).$this->colors["default"].$this->colors["red"].str_repeat(".", 25 - $percent) :
+          $this->colors["white"].str_repeat("H", 25)).$this->colors["default"];
+      if ($percent > 25) {
+        $percent = $percent - 25;
+        $part2 = (($percent < 50) ?
+            $this->colors["white"].str_repeat("H", $percent).$this->colors["default"].$this->colors["red"].str_repeat(".", 25 - $percent) :
+            $this->colors["white"].str_repeat("H", 25)).$this->colors["default"];
+      } else {
+        $part2 = $this->colors["red"].str_repeat(".", 25).$this->colors["default"];
+      }
+      echo($this->colors["red"]."[".$this->colors["default"].$part1.
+        $this->colors["red"]."50%".$this->colors["default"].
+        $part2.$this->colors["red"]."]".$this->colors["default"]."\r");
+      $this->percent = $percent;
     }
-    else {
-      $part2 =  $this->colors["red"].str_repeat(".", 25).$this->colors["default"];
-    }
-    echo($this->colors["red"]."[".$this->colors["default"].$part1.
-         $this->colors["red"]."50%".$this->colors["default"].
-         $part2.$this->colors["red"]."]".$this->colors["default"]."\r");
   }
 
   private function writeLog($message) {

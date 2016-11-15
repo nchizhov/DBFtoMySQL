@@ -91,7 +91,6 @@ class Table {
   }
 
   public function getData() {
-    $this->getHeaders();
     $this->getColumns();
     return $this->fp;
   }
