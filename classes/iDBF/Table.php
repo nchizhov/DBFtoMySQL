@@ -173,6 +173,7 @@ class Table {
         }
         if ($this->columns[$i] == "C") {
           $this->columns[$i]["length"] = unpack("S", substr($data, ($this->dbase7) ? 33 : 16, 2));
+          $this->columns[$i]["decimal"] = 0;
         }
       }
     }

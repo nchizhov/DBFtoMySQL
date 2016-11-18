@@ -172,20 +172,7 @@ class dbf2mysql {
             $line[] = $name." decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") NOT NULL DEFAULT 0";
           }
           else {
-            $type = "tinyint";
-            if ($column["length"] >= 5 && $column["length"] <= 6) {
-              $type = "smallint";
-            }
-            elseif ($column["length"] >= 7 && $column["length"] <= 9) {
-              $type = "mediumint";
-            }
-            elseif ($column["length"] >= 10 && $column["length"] <= 11) {
-              $type = "int";
-            }
-            elseif ($column["length"] >= 12 && $column["length"] <= 20) {
-              $type = "bigint";
-            }
-            $line[] = $name." ".$type."(".$column["length"].") NOT NULL DEFAULT 0";
+            $line[] = $name." bigint(".$column["length"].") NOT NULL DEFAULT 0";
           }
           break;
         case "D":
@@ -259,14 +246,67 @@ class dbf2mysql {
         }
       }
       $this->db->commit();
-      echo("\n");
+
+      //Fix max values
+      $this->fixValues();
+
       $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully imported in <red>".
                       round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
     }
   }
 
+  private function fixValues() {
+    $this->writeLog("\nCaclulate column types for table <yellow>".$this->dbfHeaders["table"]."<default>");
+    foreach ($this->dbfColumns as $column) {
+      if (in_array($column["type"], ["F", "N"])) {
+        $result = $this->db->query("SELECT MIN(`".$column["name"]."`) AS min, MAX(`".$column["name"]."`) AS max 
+                                    FROM `".$this->dbfHeaders["table"]."`")->fetch();
+        $unsigned = !($result["min"] < 0);
+        if ($unsigned) {
+          if (!$column["decimal"]) {
+            $type = "bigint";
+            if ($result["max"] > 16777215 && $result["max"] <= 4294967295) {
+              $type = "int";
+            } elseif ($result["max"] > 65535 && $result["max"] <= 16777215) {
+              $type = "mediumint";
+            } elseif ($result["max"] > 255 && $result["max"] <= 65535) {
+              $type = "smallint";
+            } elseif ($result["max"] <= 255) {
+              $type = "tinyint";
+            }
+          }
+        }
+        else {
+          if (!$column["decimal"]) {
+            $type = "bigint";
+            if ($result["min"] >= -128 && $result["max"] <= 127) {
+              $type = "tinyint";
+            } elseif ($result["min"] >= -32768 && $result["max"] <= 32767) {
+              $type = "smallint";
+            } elseif ($result["min"] >= -8388608 && $result["max"] <= 8388607) {
+              $type = "mediumint";
+            } elseif ($result["min"] >= -2147483648 && $result["max"] <= 2147483647) {
+              $type = "int";
+            }
+          }
+        }
+        if ($column["decimal"] && $unsigned) {
+          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` 
+                           CHANGE `".$column["name"]."` `".$column["name"]."` decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") UNSIGNED  
+                           NOT NULL DEFAULT '0'");
+        }
+        else {
+          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` 
+                           CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
+                           NOT NULL DEFAULT '0'");
+        }
+      }
+    }
+  }
+
   private function setKeyField() {
     if (!is_null($this->config["key_field"])) {
+      $this->writeLog("Setting up index column for table <yellow>".$this->dbfHeaders["table"]."<default>");
       $result = $this->db->prepare("SELECT COLUMN_NAME 
                                     FROM INFORMATION_SCHEMA.COLUMNS 
                                     WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column 
