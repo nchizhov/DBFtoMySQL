@@ -16,11 +16,12 @@ $config = [
   "db_name"         => "host",                  //MySQL database (required)
   "db_charset"      => "utf8",                  //MySQL charset (default: utf8)
   "dbf_path"        => "/opt/host",             //DBF directory path (required)
-  "dbf_list"        => null,                    //Array of dbf-files (without extension, case insensitive), if null - all bdf files in folder (default: null)
+  "dbf_list"        => null,                    //Array of dbf-files (without extension, case insensitive), if null - all dbf files in folder (default: null)
   "key_field"       => "code",                  //Key field in final MySQL tables (default: null)
   "columns_only"    => false,                   //Import only columns to MySQL (default: false)
   "deleted_records" => false,                   //Import marked for deletion records: adds column deleted (default: false)
   "verbose"         => true,                    //Show conversion process (default: true)
+  "update"          => true,                    //Rewrite all data or update tables (default: false)
   "log_path"        => "/var/log/dbf2mysql.log" //Log-file with process conversation, if empty or null - not logging (default: current script directory with filename dbf2mysql.log)
 ];
 
