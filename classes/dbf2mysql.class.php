@@ -366,10 +366,10 @@ class dbf2mysql {
         if (!$this->config["deleted_records"]) {
           if ($record["deleted"]) {
             $delete_sql->execute(["id" => $record[$this->config["key_field"]]]);
+            $deleted = true;
           }
           else {
             unset($record["deleted"]);
-            $deleted = true;
           }
         }
 
