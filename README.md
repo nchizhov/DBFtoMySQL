@@ -16,7 +16,6 @@ This script imports (DBASE/FoxPro) files with/without MEMO-fields into MySQL tab
    * **key_field** - Adds index to MySQL table after import (default: **null**, required if **update** - True)
    * **columns_only** - Imports only columns from DBF-file (default: **false**)
    * **deleted_records** - Import marked for deletion records: *creating column with name '**deleted**'* (default: **false**)
-   * **update** - If set to True is update records (default: False)
    * **verbose** - Show import process in console (default: **true**)
    * **log_path** - Log-file with import process. If *empty* or *null* - not logging (default: **current script directory**)
 2. Run script:

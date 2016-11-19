@@ -24,7 +24,7 @@ class dbf2mysql {
    */
   private $dbfRecords;
 
-  private $config, $dbfHeaders, $dbfColumns, $log, $log_replaces, $has_key;
+  private $config, $dbfHeaders, $dbfColumns, $log, $log_replaces;
   private $timer = [
     "start" => null,
     "tableStart" => null,
@@ -69,7 +69,6 @@ class dbf2mysql {
       "columns_only"    => false,
       "deleted_records" => false,
       "key_field"       => null,
-      "update"          => false,
       "verbose"         => true,
       "log_path"        => realpath(dirname(__FILE__)."/..")."/dbf2mysql.log"
     ];
@@ -86,12 +85,6 @@ class dbf2mysql {
     if (!isset($this->config["db_name"])) {
       $this->writeLog("<red>Error in config:<default> MySQL database name not exists");
       exit;
-    }
-    if (isset($this->config["update"]) && $this->config["update"]) {
-      if (!isset($this->config["key_field"]) || is_null($this->config["key_field"])) {
-        $this->writeLog("<red>Error in config:<default> If using update - key_field option is required");
-        exit;
-      }
     }
     if (!isset($this->config["dbf_path"])) {
       $this->writeLog("<red>Error in config:<default> DBF-files directory not exists");
@@ -158,114 +151,13 @@ class dbf2mysql {
         $this->writeLog("<red>Error in DBF:<default> ".$table->error_info);
         continue;
       }
-      $this->has_key = false;
-      if ($this->config["update"]) {
-        $this->updateMySQLColumns();
-      }
-      else {
-        $this->createMySQLColumns();
-      }
+      $this->createMySQLColumns();
       if (!$this->config["columns_only"]) {
         $this->dbfRecords = new Records($table, $this->config["db_charset"]);
-        if ($this->has_key && $this->config["update"]) {
-          $this->updateRecords();
-        }
-        else {
-          $this->writeRecords();
-        }
+        $this->writeRecords();
       }
       $this->setKeyField();
       unset($table);
-    }
-  }
-
-  private function updateMySQLColumns() {
-    $result = $this->db->prepare("SELECT TABLE_NAME  
-                                  FROM INFORMATION_SCHEMA.TABLES 
-                                  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table
-                                  LIMIT 1;");
-    $result->execute(["db" => $this->config["db_name"],
-                      "table" => $this->dbfHeaders["table"]]);
-    if ($result->rowCount()) {
-      $field_sql = $this->db->prepare("SHOW COLUMNS FROM `".$this->dbfHeaders["table"]."` 
-                                       WHERE Field = :field");
-      $columns = [];
-      $lines = [];
-      foreach ($this->dbfColumns as $column) {
-        if (!$this->has_key) {
-          $this->has_key = ($column["name"] == $this->config["key_field"]);
-        }
-        $type = "text";
-        $prefix = "NOT NULL DEFAULT ''";
-        $columns[] = "`".$column["name"]."`";
-        switch ($column["type"]) {
-          case "F":
-          case "N":
-            if ($column["decimal"]) {
-              $type = "decimal(".($column["length"] + $column["decimal"]).",".$column["decimal"].")";
-            }
-            else {
-              $type = "bigint(".$column["length"].")";
-            }
-            $prefix = "NOT NULL DEFAULT 0";
-            break;
-          case "D":
-            $type = "date";
-            $prefix = "DEFAULT NULL";
-            break;
-          case "T":
-            $type = "datetime";
-            $prefix = "DEFAULT NULL";
-            break;
-          case "L":
-            $type = "tinyint(1)";
-            $prefix = "NOT NULL DEFAULT '0'";
-            break;
-          case "C":
-            $type = "varchar(".$column["length"].")";
-            break;
-          case "M":
-            $type = "text";
-            break;
-          case "P":
-          case "G":
-            $type = "blob";
-            $prefix = "NULL DEFAULT NULL";
-            break;
-        }
-        $field_sql->execute(["field" => $column["name"]]);
-        if ($field_sql->rowCount()) {
-          $row = $field_sql->fetch();
-          if ($row["Type"] != $type) {
-            $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type." ".$prefix;
-          }
-        }
-        else {
-          $lines[] = "ADD `".$column["name"]."` ".$type." ".$prefix;
-        }
-      }
-      if ($this->config["deleted_records"]) {
-        $columns[] = "deleted";
-      }
-      if (count($columns)) {
-        $field_sql = $this->db->query("SHOW COLUMNS FROM `".$this->dbfHeaders["table"]."` 
-                                       WHERE Field NOT IN (".str_replace("`", "'", implode(", ", $columns)).")");
-        if ($field_sql->rowCount()) {
-          while ($field = $field_sql->fetch()) {
-            $lines[] = "DROP `".$field["Field"]."`";
-          }
-        }
-      }
-      if (count($lines)) {
-        $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` ".implode(", ", $lines));
-      }
-      if (!$this->has_key) {
-        $this->db->exec("TRUNCATE `".$this->dbfHeaders["table"]."`");
-      }
-      unset($columns, $lines);
-    }
-    else {
-      $this->createMySQLColumns();
     }
   }
 
@@ -322,90 +214,6 @@ class dbf2mysql {
       }
     }
     unset($line);
-  }
-
-  private function updateRecords() {
-    if (count($this->dbfColumns)) {
-      $this->writeLog("Update records for table <yellow>".$this->dbfHeaders["table"]."<default>");
-      $i = 0; $recordsPerPosition = $this->dbfHeaders["records"] / 50;
-      $sql_columns = [];
-      $update_columns = [];
-      $sql_values = [];
-      $this->column_fixes = [];
-      foreach ($this->dbfColumns as $column) {
-        $column_name = "`".$column["name"]."`";
-        $column_value = ":".$column["name"];
-        $sql_columns[] = $column_name;
-        $sql_values[] = $column_value;
-        $update_columns[] = $column_name." = ".$column_value;
-        if (in_array($column["type"], ["F", "N"])) {
-          $this->column_fixes[$column["name"]] = [
-            "min" => 0,
-            "max" => 0
-          ];
-        }
-      }
-      if ($this->config["deleted_records"]) {
-        $sql_columns[] = "`deleted`";
-        $sql_values[] = ":deleted";
-        $update_columns[] = "`deleted` = :deleted";
-      }
-      $sql_columns = implode(", ", $sql_columns);
-      $check_sql = $this->db->prepare("SELECT ".$sql_columns." 
-                                       FROM `".$this->dbfHeaders["table"]."` 
-                                       WHERE `".$this->config["key_field"]."` = :id 
-                                       LIMIT 1");
-      $update_sql = $this->db->prepare("UPDATE `".$this->dbfHeaders["table"]."` 
-                                        SET ".implode(", ", $update_columns)."
-                                        WHERE `".$this->config["key_field"]."` = :".$this->config["key_field"]."  
-                                        LIMIT 1");
-      $insert_sql = $this->db->prepare("INSERT INTO `".$this->dbfHeaders["table"]."` (".$sql_columns.") VALUES(".implode(", ", $sql_values).")");
-      if (!$this->config["deleted_records"]) {
-        $delete_sql = $this->db->prepare("DELETE FROM `".$this->dbfHeaders["table"]."` 
-                                          WHERE `".$this->config["key_field"]."` = :id 
-                                          LIMIT 1");
-      }
-      $this->db->beginTransaction();
-      while ($record = $this->dbfRecords->nextRecord()) {
-        $deleted = false;
-        if (!$this->config["deleted_records"]) {
-          if ($record["deleted"]) {
-            $delete_sql->execute(["id" => $record[$this->config["key_field"]]]);
-            $deleted = true;
-          }
-          else {
-            unset($record["deleted"]);
-          }
-        }
-
-        if (!$deleted) {
-          $check_sql->execute(["id" => $record[$this->config["key_field"]]]);
-          if ($check_sql->rowCount()) {
-            if (count(array_diff_assoc($record, $check_sql->fetch()))) {
-              $update_sql->execute($record);
-            }
-          } else {
-            $insert_sql->execute($record);
-          }
-          foreach($this->column_fixes as $c_name => $vals) {
-            if ($vals["min"] > $record[$c_name]) { $vals["min"] = $record[$c_name]; }
-            if ($vals["max"] < $record[$c_name]) { $vals["max"] = $record[$c_name]; }
-          }
-        }
-
-        $i++;
-        if ($this->config["verbose"]) {
-          $this->drawStatus($i, $recordsPerPosition);
-        }
-      }
-      $this->db->commit();
-
-      $this->fixValues();
-
-      $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully updated in <red>".
-                       round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
-      unset($sql_columns, $update_columns, $sql_values, $check_sql, $update_sql, $insert_sql);
-    }
   }
 
   private function writeRecords() {

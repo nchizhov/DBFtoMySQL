@@ -21,7 +21,6 @@ $config = [
   "columns_only"    => false,                   //Import only columns to MySQL (default: false)
   "deleted_records" => false,                   //Import marked for deletion records: adds column deleted (default: false)
   "verbose"         => true,                    //Show conversion process (default: true)
-  "update"          => true,                    //Rewrite all data or update tables (default: false)
   "log_path"        => "/var/log/dbf2mysql.log" //Log-file with process conversation, if empty or null - not logging (default: current script directory with filename dbf2mysql.log)
 ];
 
