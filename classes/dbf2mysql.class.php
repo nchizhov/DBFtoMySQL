@@ -255,7 +255,7 @@ class dbf2mysql {
         }
 
         if (!$deleted) {
-          foreach ($this->column_fixes as $c_name => $vals) {
+          foreach ($this->column_fixes as $c_name => &$vals) {
             if ($vals["min"] > $record[$c_name]) {
               $vals["min"] = $record[$c_name];
             }
@@ -321,8 +321,8 @@ class dbf2mysql {
                       NOT NULL DEFAULT '0'";
         }
         else {
-          $lines[] =  "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
-                       NOT NULL DEFAULT '0'";
+          $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
+                      NOT NULL DEFAULT '0'";
         }
       }
     }
@@ -343,12 +343,7 @@ class dbf2mysql {
                         "table" => $this->dbfHeaders["table"],
                         "column" => $this->config["key_field"]]);
       if ($result->rowCount()) {
-        $indexes_sql = $this->db->prepare("SHOW KEYS FROM `".$this->dbfHeaders["table"]."` 
-                                           WHERE Key_name = :key");
-        $indexes_sql->execute(["key" => $this->config["key_field"]]);
-        if (!$indexes_sql->rowCount()) {
-          $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
-        }
+        $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
       }
     }
   }
