@@ -36,6 +36,7 @@ class dbf2mysql {
     "white" => "\e[97m"
   ];
   private $percent = -1;
+  private $column_fixes;
 
   public function __construct($config) {
     ini_set("memory_limit", "2048M");
@@ -189,6 +190,7 @@ class dbf2mysql {
       $field_sql = $this->db->prepare("SHOW COLUMNS FROM `".$this->dbfHeaders["table"]."` 
                                        WHERE Field = :field");
       $columns = [];
+      $lines = [];
       foreach ($this->dbfColumns as $column) {
         if (!$this->has_key) {
           $this->has_key = ($column["name"] == $this->config["key_field"]);
@@ -235,12 +237,11 @@ class dbf2mysql {
         if ($field_sql->rowCount()) {
           $row = $field_sql->fetch();
           if ($row["Type"] != $type) {
-            $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` 
-                             CHANGE `".$column["name"]."` `".$column["name"]."` ".$type." ".$prefix);
+            $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type." ".$prefix;
           }
         }
         else {
-          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` ADD `".$column["name"]."` ".$type." ".$prefix);
+          $lines[] = "ADD `".$column["name"]."` ".$type." ".$prefix;
         }
       }
       if ($this->config["deleted_records"]) {
@@ -251,13 +252,17 @@ class dbf2mysql {
                                        WHERE Field NOT IN (".str_replace("`", "'", implode(", ", $columns)).")");
         if ($field_sql->rowCount()) {
           while ($field = $field_sql->fetch()) {
-            $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` DROP `".$field["Field"]."`");
+            $lines[] = "DROP `".$field["Field"]."`";
           }
         }
+      }
+      if (count($lines)) {
+        $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` ".implode(", ", $lines));
       }
       if (!$this->has_key) {
         $this->db->exec("TRUNCATE `".$this->dbfHeaders["table"]."`");
       }
+      unset($columns, $lines);
     }
     else {
       $this->createMySQLColumns();
@@ -316,6 +321,7 @@ class dbf2mysql {
         $this->writeLog("<red>Error in MySQL:<default> ".print_r($this->db->errorInfo(), true));
       }
     }
+    unset($line);
   }
 
   private function updateRecords() {
@@ -325,12 +331,19 @@ class dbf2mysql {
       $sql_columns = [];
       $update_columns = [];
       $sql_values = [];
+      $this->column_fixes = [];
       foreach ($this->dbfColumns as $column) {
         $column_name = "`".$column["name"]."`";
         $column_value = ":".$column["name"];
         $sql_columns[] = $column_name;
         $sql_values[] = $column_value;
         $update_columns[] = $column_name." = ".$column_value;
+        if (in_array($column["type"], ["F", "N"])) {
+          $this->column_fixes[$column["name"]] = [
+            "min" => 0,
+            "max" => 0
+          ];
+        }
       }
       if ($this->config["deleted_records"]) {
         $sql_columns[] = "`deleted`";
@@ -374,7 +387,12 @@ class dbf2mysql {
           } else {
             $insert_sql->execute($record);
           }
+          foreach($this->column_fixes as $c_name => $vals) {
+            if ($vals["min"] > $record[$c_name]) { $vals["min"] = $record[$c_name]; }
+            if ($vals["max"] < $record[$c_name]) { $vals["max"] = $record[$c_name]; }
+          }
         }
+
         $i++;
         if ($this->config["verbose"]) {
           $this->drawStatus($i, $recordsPerPosition);
@@ -386,6 +404,7 @@ class dbf2mysql {
 
       $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully updated in <red>".
                        round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
+      unset($sql_columns, $update_columns, $sql_values, $check_sql, $update_sql, $insert_sql);
     }
   }
 
@@ -393,11 +412,18 @@ class dbf2mysql {
     if (count($this->dbfColumns)) {
       $this->writeLog("Init import records for table <yellow>".$this->dbfHeaders["table"]."<default>");
       $i = 0; $recordsPerPosition = $this->dbfHeaders["records"] / 50;
+      $this->column_fixes = [];
       $sql_keys = [];
       $sql_values = [];
       foreach($this->dbfColumns as $column) {
         $sql_keys[] = "`".$column["name"]."`";
         $sql_values[] = ":".$column["name"];
+        if (in_array($column["type"], ["F", "N"])) {
+          $this->column_fixes[$column["name"]] = [
+            "min" => 0,
+            "max" => 0
+          ];
+        }
       }
       if ($this->config["deleted_records"]) {
         $sql_keys[] = "`deleted`";
@@ -406,6 +432,7 @@ class dbf2mysql {
       $result = $this->db->prepare("INSERT INTO `".$this->dbfHeaders["table"]."` (".implode(", ", $sql_keys).") VALUES(".implode(", ", $sql_values).")");
       $this->db->beginTransaction();
       while ($record = $this->dbfRecords->nextRecord()) {
+        $deleted = false;
         if ($this->config["deleted_records"]) {
           $result->execute($record);
         }
@@ -414,7 +441,22 @@ class dbf2mysql {
             unset($record["deleted"]);
             $result->execute($record);
           }
+          else {
+            $deleted = true;
+          }
         }
+
+        if (!$deleted) {
+          foreach ($this->column_fixes as $c_name => $vals) {
+            if ($vals["min"] > $record[$c_name]) {
+              $vals["min"] = $record[$c_name];
+            }
+            if ($vals["max"] < $record[$c_name]) {
+              $vals["max"] = $record[$c_name];
+            }
+          }
+        }
+
         $i++;
         if ($this->config["verbose"]) {
           $this->drawStatus($i, $recordsPerPosition);
@@ -427,15 +469,16 @@ class dbf2mysql {
 
       $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully imported in <red>".
                        round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
+      unset($sql_keys, $sql_values);
     }
   }
 
   private function fixValues() {
     $this->writeLog("\nCaclulate column types for table <yellow>".$this->dbfHeaders["table"]."<default>");
+    $lines = [];
     foreach ($this->dbfColumns as $column) {
       if (in_array($column["type"], ["F", "N"])) {
-        $result = $this->db->query("SELECT MIN(`".$column["name"]."`) AS min, MAX(`".$column["name"]."`) AS max 
-                                    FROM `".$this->dbfHeaders["table"]."`")->fetch();
+        $result = $this->column_fixes[$column["name"]];
         $unsigned = !($result["min"] < 0);
         if ($unsigned) {
           if (!$column["decimal"]) {
@@ -466,17 +509,19 @@ class dbf2mysql {
           }
         }
         if ($column["decimal"] && $unsigned) {
-          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` 
-                           CHANGE `".$column["name"]."` `".$column["name"]."` decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") UNSIGNED  
-                           NOT NULL DEFAULT '0'");
+          $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") UNSIGNED  
+                      NOT NULL DEFAULT '0'";
         }
         else {
-          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` 
-                           CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
-                           NOT NULL DEFAULT '0'");
+          $lines[] =  "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
+                       NOT NULL DEFAULT '0'";
         }
       }
     }
+    if (count($lines)) {
+      $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` ".implode(", ", $lines));
+    }
+    unset($lines);
   }
 
   private function setKeyField() {
