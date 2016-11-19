@@ -258,14 +258,6 @@ class dbf2mysql {
       if (!$this->has_key) {
         $this->db->exec("TRUNCATE `".$this->dbfHeaders["table"]."`");
       }
-      else {
-        $indexes_sql = $this->db->prepare("SHOW KEYS FROM `".$this->dbfHeaders["table"]."` 
-                                           WHERE Key_name = :key");
-        $indexes_sql->execute(["key" => $this->config["key_field"]]);
-        if ($indexes_sql->rowCount()) {
-          $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` DROP INDEX `".$this->config["key_field"]."`");
-        }
-      }
     }
     else {
       $this->createMySQLColumns();
@@ -498,7 +490,12 @@ class dbf2mysql {
                         "table" => $this->dbfHeaders["table"],
                         "column" => $this->config["key_field"]]);
       if ($result->rowCount()) {
-        $this->db->exec("ALTER TABLE `".$this->dbfHeaders["table"]."` ADD INDEX(`".$this->config["key_field"]."`)");
+        $indexes_sql = $this->db->prepare("SHOW KEYS FROM `".$this->dbfHeaders["table"]."` 
+                                           WHERE Key_name = :key");
+        $indexes_sql->execute(["key" => $this->config["key_field"]]);
+        if (!$indexes_sql->rowCount()) {
+          $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
+        }
       }
     }
   }
