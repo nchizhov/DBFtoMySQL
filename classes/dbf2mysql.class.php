@@ -66,6 +66,7 @@ class dbf2mysql {
       "db_password"     => "",
       "db_charset"      => "utf8",
       "dbf_list"        => null,
+      "table_prefix"    => null,
       "columns_only"    => false,
       "deleted_records" => false,
       "key_field"       => null,
@@ -89,6 +90,9 @@ class dbf2mysql {
     if (!isset($this->config["dbf_path"])) {
       $this->writeLog("<red>Error in config:<default> DBF-files directory not exists");
       exit;
+    }
+    if (is_null($this->config["table_prefix"])) {
+      $this->config["table_prefix"] = "";
     }
     //check dbf
     if (!is_null($this->config["dbf_list"])) {
@@ -146,6 +150,7 @@ class dbf2mysql {
         $this->writeLog("<red>Error in DBF:<default> ".$table->error_info);
         continue;
       }
+      $this->dbfHeaders["table"] = $this->config["table_prefix"].$this->dbfHeaders["table"];
       $this->dbfColumns = $table->getColumns();
       if ($table->error) {
         $this->writeLog("<red>Error in DBF:<default> ".$table->error_info);

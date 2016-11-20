@@ -18,6 +18,7 @@ $config = [
   "dbf_path"        => "/opt/host",             //DBF directory path (required)
   "dbf_list"        => null,                    //Array of dbf-files (without extension, case insensitive), if null - all dbf files in folder (default: null)
   "key_field"       => "code",                  //Key field in final MySQL tables (default: null)
+  "table_prefix"    => "host_",                 //Add prefix for table name (default: null)
   "columns_only"    => false,                   //Import only columns to MySQL (default: false)
   "deleted_records" => false,                   //Import marked for deletion records: adds column deleted (default: false)
   "verbose"         => true,                    //Show conversion process (default: true)
