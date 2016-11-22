@@ -332,7 +332,9 @@ class dbf2mysql {
       }
     }
     if (count($lines)) {
+      $this->db->beginTransaction();
       $this->db->exec("FLUSH TABLES; ALTER TABLE `".$this->dbfHeaders["table"]."` ".implode(", ", $lines).";");
+      $this->db->commit();
     }
     unset($lines);
   }
@@ -348,9 +350,7 @@ class dbf2mysql {
                         "table" => $this->dbfHeaders["table"],
                         "column" => $this->config["key_field"]]);
       if ($result->rowCount()) {
-        $this->db->beginTransaction();
         $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
-        $this->db->commit();
       }
     }
   }
