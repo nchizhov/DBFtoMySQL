@@ -43,7 +43,7 @@ class Records {
     }
     $record = [];
     $data = fread($this->fp, $this->headers["record_length"]);
-    $record["deleted"] = (unpack("C", $data[0]) == 42);
+    $record["deleted"] = (unpack("C", $data[0])[1] == 42);
     $pos = 1;
     foreach ($this->columns as $column) {
       $sub_data = trim(substr($data, $pos, $column["length"]));
