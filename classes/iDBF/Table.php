@@ -171,7 +171,7 @@ class Table {
             "mdx_flag" => unpack("C", $data[31])[1]
           ];
         }
-        if ($this->columns[$i] == "C") {
+        if ($this->columns[$i]["type"] == "C") {
           $this->columns[$i]["length"] = unpack("S", substr($data, ($this->dbase7) ? 33 : 16, 2));
           $this->columns[$i]["decimal"] = 0;
         }
