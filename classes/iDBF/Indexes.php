@@ -4,20 +4,28 @@
 
 namespace iDBF;
 
+use Exception;
+
 class Indexes {
   private $file, $fp;
   private $headers = null;
   public $error = false;
   public $error_info = null;
 
+  /**
+   * @throws Exception
+   */
   public function __construct($file) {
     $this->file = $file;
     $this->open();
   }
 
+  /**
+   * @throws Exception
+   */
   private function open() {
     if (!file_exists($this->file)) {
-      throw new \Exception(sprintf('File %s cannot be found', $this->file));
+      throw new Exception(sprintf('File %s cannot be found', $this->file));
     }
     $this->fp = fopen($this->file, "rb");
   }

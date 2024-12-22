@@ -172,6 +172,7 @@ class dbf2mysql {
     foreach ($this->dbfColumns as $column) {
       $name = "`".$column["name"]."`";
       switch ($column["type"]) {
+        case "Y":
         case "F":
         case "N":
           if ($column["decimal"]) {
@@ -181,10 +182,14 @@ class dbf2mysql {
             $line[] = $name." bigint(".$column["length"].") NOT NULL DEFAULT 0";
           }
           break;
+        case "I":
+          $line[] = $name." bigint(20) unsigned NOT NULL DEFAULT 0";
+          break;
         case "D":
           $line[] = $name." date DEFAULT NULL";
           break;
         case "T":
+        case "@":
           $line[] = $name." datetime DEFAULT NULL";
           break;
         case "L":
@@ -208,8 +213,8 @@ class dbf2mysql {
       }
       $result = $this->db->exec("CREATE TABLE IF NOT EXISTS `".$this->dbfHeaders["table"]."` (".
                                   implode(", ", $line).
-                                ") ENGINE=InnoDB DEFAULT 
-                                 CHARSET=".$this->config["db_charset"]." 
+                                ") ENGINE=InnoDB
+                                 DEFAULT CHARSET=".$this->config["db_charset"]."
                                  COMMENT='Converted DBF file: ".$this->dbfHeaders["table"].".dbf'");
       if ($result !== false) {
         $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully created");
@@ -222,113 +227,113 @@ class dbf2mysql {
   }
 
   private function writeRecords() {
-    if (count($this->dbfColumns)) {
-      $this->writeLog("Init import records for table <yellow>".$this->dbfHeaders["table"]."<default>");
-      $i = 0; $recordsPerPosition = $this->dbfHeaders["records"] / 50;
-      $this->column_fixes = [];
-      $sql_keys = [];
-      $sql_values = [];
-      foreach($this->dbfColumns as $column) {
-        $sql_keys[] = "`".$column["name"]."`";
-        $sql_values[] = ":".$column["name"];
-        if (in_array($column["type"], ["F", "N"])) {
-          $this->column_fixes[$column["name"]] = [
-            "min" => 0,
-            "max" => 0
-          ];
-        }
-      }
-      if ($this->config["deleted_records"]) {
-        $sql_keys[] = "`deleted`";
-        $sql_values[] = ":deleted";
-      }
-      $result = $this->db->prepare("INSERT INTO `".$this->dbfHeaders["table"]."` (".implode(", ", $sql_keys).") VALUES(".implode(", ", $sql_values).")");
-      $this->db->beginTransaction();
-      while ($record = $this->dbfRecords->nextRecord()) {
-        $deleted = false;
-        if ($this->config["deleted_records"]) {
-          $result->execute($record);
-        }
-        else {
-          if (!$record["deleted"]) {
-            unset($record["deleted"]);
-            $result->execute($record);
-          }
-          else {
-            $deleted = true;
-          }
-        }
-
-        if (!$deleted) {
-          foreach ($this->column_fixes as $c_name => &$vals) {
-            if ($vals["min"] > $record[$c_name]) {
-              $vals["min"] = $record[$c_name];
-            }
-            if ($vals["max"] < $record[$c_name]) {
-              $vals["max"] = $record[$c_name];
-            }
-          }
-        }
-
-        $i++;
-        if ($this->config["verbose"]) {
-          $this->drawStatus($i, $recordsPerPosition);
-        }
-      }
-      $this->db->commit();
-
-      //Fix max values
-      $this->fixValues();
-
-      $this->writeLog("Table <yellow>".$this->dbfHeaders["table"]."<default> successfully imported in <red>".
-                       round((time() - $this->timer["tableStart"]) / 60, 2)."<default> minutes");
-      unset($sql_keys, $sql_values);
+    if (!count($this->dbfColumns)) {
+      return;
     }
+    $this->writeLog("Init import records for table <yellow>" . $this->dbfHeaders["table"] . "<default>");
+    $i = 0;
+    $recordsPerPosition = $this->dbfHeaders["records"] / 50;
+    $this->column_fixes = [];
+    $sql_keys = [];
+    $sql_values = [];
+    foreach ($this->dbfColumns as $column) {
+      $sql_keys[] = "`" . $column["name"] . "`";
+      $sql_values[] = ":" . $column["name"];
+      if (!in_array($column["type"], ["F", "N", "Y", "I"])) {
+        continue;
+      }
+      $this->column_fixes[$column["name"]] = [
+        "min" => 0,
+        "max" => 0
+      ];
+    }
+    if ($this->config["deleted_records"]) {
+      $sql_keys[] = "`deleted`";
+      $sql_values[] = ":deleted";
+    }
+    $result = $this->db->prepare("INSERT INTO `" . $this->dbfHeaders["table"] . "` (" . implode(", ", $sql_keys) . ") VALUES(" . implode(", ", $sql_values) . ")");
+    $this->db->beginTransaction();
+    while ($record = $this->dbfRecords->nextRecord()) {
+      $deleted = false;
+      if ($this->config["deleted_records"]) {
+        $result->execute($record);
+      } else {
+        if (!$record["deleted"]) {
+          unset($record["deleted"]);
+          $result->execute($record);
+        } else {
+          $deleted = true;
+        }
+      }
+
+      if (!$deleted) {
+        foreach ($this->column_fixes as $c_name => &$vals) {
+          if ($vals["min"] > $record[$c_name]) {
+            $vals["min"] = $record[$c_name];
+          }
+          if ($vals["max"] < $record[$c_name]) {
+            $vals["max"] = $record[$c_name];
+          }
+        }
+      }
+
+      $i++;
+      if ($this->config["verbose"]) {
+        $this->drawStatus($i, $recordsPerPosition);
+      }
+    }
+    $this->db->commit();
+
+    //Fix max values
+    $this->fixValues();
+
+    $this->writeLog("Table <yellow>" . $this->dbfHeaders["table"] . "<default> successfully imported in <red>" .
+      round((time() - $this->timer["tableStart"]) / 60, 2) . "<default> minutes");
+    unset($sql_keys, $sql_values);
   }
 
   private function fixValues() {
     $this->writeLog("\nCaclulate column types for table <yellow>".$this->dbfHeaders["table"]."<default>");
     $lines = [];
     foreach ($this->dbfColumns as $column) {
-      if (in_array($column["type"], ["F", "N"])) {
-        $result = $this->column_fixes[$column["name"]];
-        $unsigned = !($result["min"] < 0);
-        if ($unsigned) {
-          if (!$column["decimal"]) {
-            $type = "bigint";
-            if ($result["max"] > 16777215 && $result["max"] <= 4294967295) {
-              $type = "int";
-            } elseif ($result["max"] > 65535 && $result["max"] <= 16777215) {
-              $type = "mediumint";
-            } elseif ($result["max"] > 255 && $result["max"] <= 65535) {
-              $type = "smallint";
-            } elseif ($result["max"] <= 255) {
-              $type = "tinyint";
-            }
+      if (!in_array($column["type"], ["F", "N", "Y", "I"])) {
+        continue;
+      }
+      $result = $this->column_fixes[$column["name"]];
+      $unsigned = !($result["min"] < 0);
+      if ($unsigned) {
+        if (!$column["decimal"]) {
+          $type = "bigint";
+          if ($result["max"] > 16777215 && $result["max"] <= 4294967295) {
+            $type = "int";
+          } elseif ($result["max"] > 65535 && $result["max"] <= 16777215) {
+            $type = "mediumint";
+          } elseif ($result["max"] > 255 && $result["max"] <= 65535) {
+            $type = "smallint";
+          } elseif ($result["max"] <= 255) {
+            $type = "tinyint";
           }
         }
-        else {
-          if (!$column["decimal"]) {
-            $type = "bigint";
-            if ($result["min"] >= -128 && $result["max"] <= 127) {
-              $type = "tinyint";
-            } elseif ($result["min"] >= -32768 && $result["max"] <= 32767) {
-              $type = "smallint";
-            } elseif ($result["min"] >= -8388608 && $result["max"] <= 8388607) {
-              $type = "mediumint";
-            } elseif ($result["min"] >= -2147483648 && $result["max"] <= 2147483647) {
-              $type = "int";
-            }
+      } else {
+        if (!$column["decimal"]) {
+          $type = "bigint";
+          if ($result["min"] >= -128 && $result["max"] <= 127) {
+            $type = "tinyint";
+          } elseif ($result["min"] >= -32768 && $result["max"] <= 32767) {
+            $type = "smallint";
+          } elseif ($result["min"] >= -8388608 && $result["max"] <= 8388607) {
+            $type = "mediumint";
+          } elseif ($result["min"] >= -2147483648 && $result["max"] <= 2147483647) {
+            $type = "int";
           }
         }
-        if ($column["decimal"] && $unsigned) {
-          $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") UNSIGNED  
-                      NOT NULL DEFAULT '0'";
-        }
-        else {
-          $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")." 
-                      NOT NULL DEFAULT '0'";
-        }
+      }
+      if ($column["decimal"] && $unsigned) {
+        $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` decimal(".($column["length"] + $column["decimal"]).", ".$column["decimal"].") UNSIGNED
+                    NOT NULL DEFAULT '0'";
+      } elseif (!$column['decimal']) {
+        $lines[] = "CHANGE `".$column["name"]."` `".$column["name"]."` ".$type."(".$column["length"].")".($unsigned ? " UNSIGNED" : "")."
+                    NOT NULL DEFAULT '0'";
       }
     }
     if (count($lines)) {
@@ -342,9 +347,9 @@ class dbf2mysql {
   private function setKeyField() {
     if (!is_null($this->config["key_field"])) {
       $this->writeLog("Setting up index column for table <yellow>".$this->dbfHeaders["table"]."<default>");
-      $result = $this->db->prepare("SELECT COLUMN_NAME 
-                                    FROM INFORMATION_SCHEMA.COLUMNS 
-                                    WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column 
+      $result = $this->db->prepare("SELECT COLUMN_NAME
+                                    FROM INFORMATION_SCHEMA.COLUMNS
+                                    WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column
                                     LIMIT 1");
       $result->execute(["db" => $this->config["db_name"],
                         "table" => $this->dbfHeaders["table"],
