@@ -345,18 +345,19 @@ class dbf2mysql {
   }
 
   private function setKeyField() {
-    if (!is_null($this->config["key_field"])) {
-      $this->writeLog("Setting up index column for table <yellow>".$this->dbfHeaders["table"]."<default>");
-      $result = $this->db->prepare("SELECT COLUMN_NAME
-                                    FROM INFORMATION_SCHEMA.COLUMNS
-                                    WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column
-                                    LIMIT 1");
-      $result->execute(["db" => $this->config["db_name"],
-                        "table" => $this->dbfHeaders["table"],
-                        "column" => $this->config["key_field"]]);
-      if ($result->rowCount()) {
-        $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
-      }
+    if (is_null($this->config["key_field"])) {
+      return;
+    }
+    $this->writeLog("Setting up index column for table <yellow>".$this->dbfHeaders["table"]."<default>");
+    $result = $this->db->prepare("SELECT COLUMN_NAME
+                                  FROM INFORMATION_SCHEMA.COLUMNS
+                                  WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table AND COLUMN_NAME = :column
+                                  LIMIT 1");
+    $result->execute(["db" => $this->config["db_name"],
+                      "table" => $this->dbfHeaders["table"],
+                      "column" => $this->config["key_field"]]);
+    if ($result->rowCount()) {
+      $this->db->exec("ALTER TABLE `" . $this->dbfHeaders["table"] . "` ADD INDEX(`" . $this->config["key_field"] . "`)");
     }
   }
 
